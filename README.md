@@ -13,3 +13,4 @@ Assignment 8 --> Write Advanced query
 Assignment 9 --> Active database( some business logic was given and we have to create the sp, 
                   Udf and trigger to achive this logic)
 
+PDF file has some explanaiton and screenshot.
