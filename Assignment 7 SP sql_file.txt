@@ -1,0 +1,244 @@
+--7
+/*
+Develop a stored procedure to receive a product number and returns the total number product sold
+*/
+--1
+CREATE OR REPLACE PROCEDURE get_emp_rs (p_prod_no    IN  int,
+                                        p_recordset OUT SYS_REFCURSOR) AS 
+BEGIN 
+  OPEN p_recordset FOR
+    select ol.product_no ,count(o.order_no) from orders  o join orderline ol 
+    on o.order_no=ol.order_no
+    group by ol.product_no
+    having ol.product_no=p_prod_no;
+END get_emp_rs;
+/
+
+-- calling the procedure 
+
+SET SERVEROUTPUT ON SIZE 1000000
+DECLARE
+  l_cursor  SYS_REFCURSOR;
+  l_prod_no     int;
+  l_orderscount   int;
+BEGIN
+  get_emp_rs (p_prod_no    => 110,
+              p_recordset => l_cursor);
+  LOOP 
+    FETCH l_cursor
+    INTO  l_prod_no, l_orderscount;
+    EXIT WHEN l_cursor%NOTFOUND;
+    DBMS_OUTPUT.PUT_LINE(l_prod_no || ' | ' || l_orderscount );
+  END LOOP;
+  CLOSE l_cursor;
+END;
+/
+
+
+
+/*
+Product_no     Product_sold
+110               316
+
+
+PL/SQL procedure successfully completed.
+
+
+*/
+
+
+/* 
+Develop a stored procedure to receive a product number and year, and returns the total number product sold for that year
+*/
+
+
+--2
+CREATE OR REPLACE PROCEDURE get_emp_rs_yearly (p_prod_number    IN  int,p_year int,
+                                        p_recordset OUT SYS_REFCURSOR) AS 
+BEGIN 
+  OPEN p_recordset FOR
+   select ol.product_no ,extract(year from o.order_date),count(o.order_no)  from orders  o join orderline ol 
+    on o.order_no=ol.order_no
+    join returnprod rp on ol.orderline_no=rp.orderline_no
+    group by ol.product_no,extract(year from o.order_date)
+    having ol.product_no = p_prod_number  ;
+END get_emp_rs_yearly;
+/
+
+-- calling the procedure 
+
+SET SERVEROUTPUT ON SIZE 1000000
+DECLARE
+  l_cursor  SYS_REFCURSOR;
+  p_prod_number     int;
+  p_year           int;
+  l_orderscount      int;
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('Product_no P_year  Product_sold' );
+    DBMS_OUTPUT.PUT_LINE('---------------------------------' );
+  get_emp_rs_yearly (p_prod_number    => 110,
+                p_year  => 2000,            
+              p_recordset => l_cursor);
+  LOOP 
+    FETCH l_cursor
+    INTO  p_prod_number,p_year, l_orderscount;
+    EXIT WHEN l_cursor%NOTFOUND;
+    
+    DBMS_OUTPUT.PUT_LINE(p_prod_number || '       '||  p_year ||'          ' || l_orderscount );
+  END LOOP;
+  CLOSE l_cursor;
+END;
+/
+
+
+Product_no P_year  Product_sold
+---------------------------------
+110       2002          3
+110       2000          1
+110       2003          25
+
+
+PL/SQL procedure successfully completed.
+
+/*
+Develop a procedure that will receive a product number, a month, a year, and returns the sales for that year
+*/
+--------------------------------------------------------------------------------------------------------------
+
+CREATE OR REPLACE PROCEDURE get_emp_rs_yearly (p_prod_number  int,p_year int,
+                                                p_recordset OUT SYS_REFCURSOR) AS 
+BEGIN 
+  OPEN p_recordset FOR
+    select ol.product_no ,extract(year from o.order_date) ,(sum(o.subtotal)-sum(nvl(amount_refunded,0 ))) as sale
+    from orders  o join orderline ol 
+    on o.order_no=ol.order_no
+    join returnprod rp on ol.orderline_no=rp.orderline_no
+    group by ol.product_no,extract(year from o.order_date)
+    having ol.product_no=p_prod_number and extract(year from o.order_date)= p_year;
+END get_emp_rs_yearly;
+/
+
+-- calling the procedure 
+SET SERVEROUTPUT ON SIZE 1000000
+DECLARE
+  l_cursor  SYS_REFCURSOR;
+  p_prod_number     int;
+  p_year            int;
+  l_sale             int;
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('Product_no P_year        Slae' );
+    DBMS_OUTPUT.PUT_LINE('---------------------------------' );
+  get_emp_rs_yearly (p_prod_number    => 170,
+                p_year  => 2000,            
+                p_recordset => l_cursor);
+  LOOP 
+    FETCH l_cursor
+    INTO  p_prod_number,p_year, l_sale;
+    EXIT WHEN l_cursor%NOTFOUND;    
+    DBMS_OUTPUT.PUT_LINE(p_prod_number || '       '||  p_year ||'          ' || l_sale );
+  END LOOP;
+  CLOSE l_cursor;
+END;
+/
+
+
+Product_no P_year        Slae
+---------------------------------
+170       2000          3124865
+
+
+PL/SQL procedure successfully completed.
+
+
+---------------------------------------------------------------------------------------
+/*
+Develop a driver program in PL/SQL to call the above procedures and produce the following reports
+*/
+set serveroutput on;
+declare
+l_cursor  SYS_REFCURSOR;
+v_prod_no int;
+v_total_sale int;
+v_year int;
+v_month int;
+v_prodname varchar2(100);
+v_prod_sold int ;
+cursor c1 is   
+select  ol.product_no ,p.prod_name,extract(year from o.order_date) 
+from orders  o join orderline ol 
+on o.order_no=ol.order_no
+join returnprod rp on ol.orderline_no=rp.orderline_no
+join product p on p.product_no= ol.product_no
+group by ol.product_no,p.prod_name,extract(year from o.order_date);
+
+begin
+    open c1;
+    dbms_output.put_line(rpad('Product NO',5) || rpad(' Product_name',15) ||rpad( 'Year',15) ||rpad( 'NO_ofProd_SOLD',15) ||rpad( 'Sales',15));
+    dbms_output.put_line('-----------------------------------------------------------------------------------------------');
+    loop
+    fetch c1 into v_prod_no,v_prodname,v_year;
+    exit when c1%notfound;
+    get_emp_rs_yearly_sales(v_prod_no,v_year,l_cursor);
+    
+    
+     ---select udf_total_product_yearly(v_prod_no,v_year) into v_prod_sold from dual;
+     --select udf_total_product_detai(v_prod_no,v_year) into v_total_sale from dual;
+ 
+  --  dbms_output.put_line(rpad(v_prod_no,5) || rpad( v_prodname,10) ||rpad( v_year,10) ||rpad( v_prod_sold,10) ||rpad( v_total_sale,10));
+    dbms_output.put_line(rpad(v_prod_no,5) || rpad( v_prodname,15) ||rpad( v_year,15) ||rpad( v_prod_sold,15) ||rpad( v_total_sale,15));
+    end loop;
+    close c1;
+end;
+/
+
+
+/*
+
+Error starting at line : 142 in command -
+v_year
+Error report -
+Unknown Command
+
+Produ Product_name  Year           NO_ofProd_SOLD Sales          
+-----------------------------------------------------------------------------------------------
+180  knee pad       2003           
+170  Keeping Gloves 2003           
+120  Table Tennis   2000           
+170  Keeping Gloves 2001           
+180  knee pad       2001           
+110  Ping Pong Paddl2002           
+130  Hockey Stick   1999           
+160  Golf stick     2000           
+190  Soccer socks   2002           
+110  Ping Pong Paddl2003           
+190  Soccer socks   2000           
+130  Hockey Stick   2000           
+120  Table Tennis   2002           
+130  Hockey Stick   2002           
+150  Cricket Bat    2003           
+190  Soccer socks   2003           
+200  shocks         2003           
+180  knee pad       2002           
+200  shocks         2002           
+150  Cricket Bat    2002           
+120  Table Tennis   2003           
+130  Hockey Stick   2003           
+140  Keeping Gloves 2003           
+160  Golf stick     2003           
+120  Table Tennis   2001           
+160  Golf stick     2001           
+140  Keeping Gloves 2002           
+170  Keeping Gloves 2000           
+180  knee pad       2000           
+110  Ping Pong Paddl2000           
+200  shocks         2001           
+200  shocks         2000           
+170  Keeping Gloves 2002           
+160  Golf stick     2002           
+
+
+PL/SQL procedure successfully completed.
+
+
+
+*/

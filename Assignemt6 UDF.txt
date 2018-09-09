@@ -1,0 +1,292 @@
+/*
+Q6: User Defined Functions, Using the latest version of your database, do the followi
+ngs (10%)
+
+*/
+
+
+--1 * Develop a UDF to receive a product number and returns the total number product sold
+create or replace function udf_total_product(p_prod_number int)
+return int
+as
+v_prod_sold int;
+v_prod_no int;
+cursor c1 is 
+select ol.product_no ,count(o.order_no) from orders  o join orderline ol 
+on o.order_no=ol.order_no
+group by ol.product_no;
+begin
+open c1;
+    loop
+    fetch c1 into v_prod_no,v_prod_sold;
+    exit when c1%notfound;
+    
+    if v_prod_no=p_prod_number then
+    return v_prod_sold;
+    end if;
+    end loop;
+    close c1;
+end;
+/
+-- select udf_total_product(120) from dual;
+/*
+"UDF_TOTAL_PRODUCT(120)"      
+"242"                         
+*/
+
+-----------------------------------------------------------------------------------------------------------------
+/*
+2.Develop a UDF to receive a product number and year, and returns the total number product sold for that year
+*/
+
+-- select udf_total_product_yearly(180,2001) from dual
+create or replace function udf_total_product_yearly(p_prod_number int,p_year int)
+return int
+as
+v_prod_sold int;
+v_year int;
+v_prod_no int;
+cursor c1 is 
+select ol.product_no ,extract(year from o.order_date),count(o.order_no)  from orders  o join orderline ol 
+on o.order_no=ol.order_no
+join returnprod rp on ol.orderline_no=rp.orderline_no
+group by ol.product_no,extract(year from o.order_date)
+having ol.product_no = p_prod_number  ;
+
+begin 
+open c1;
+    loop
+    fetch c1 into v_prod_no,v_year,v_prod_sold;
+    exit when c1%notfound;
+    
+    if v_prod_no=p_prod_number and v_year=p_year then
+    return v_prod_sold;
+    -- else return 0;
+    end if;
+    end loop;
+    close c1;
+     exception WHEN others then
+    return null;
+end;
+
+-----------------------------------------------------------------------------------------------------------------------
+/*
+3.Develop a UDF that will receive a product number, a month, a year, and returns the sales for that year
+*/
+
+
+--3 select udf_total_product_detai( 140,2002) from dual;
+create or replace function udf_total_product_detai(p_prod_no int,p_year int)
+return int 
+as
+v_sales int;
+v_year int;
+v_month int;
+v_prod_no int;
+
+cursor c1 is 
+select ol.product_no ,extract(year from o.order_date) ,(sum(o.subtotal)-sum(nvl(amount_refunded,0 ))) as sale
+from orders  o join orderline ol 
+on o.order_no=ol.order_no
+join returnprod rp on ol.orderline_no=rp.orderline_no
+group by ol.product_no,extract(year from o.order_date)
+having ol.product_no=p_prod_no;
+
+begin
+open c1;
+
+  loop
+    fetch c1 into v_prod_no,v_year,v_sales;
+    exit when c1%notfound;
+     if v_prod_no=p_prod_no and v_year=p_year then
+    return v_sales;
+    else return null;    
+    end if;
+    end loop;
+    close c1;
+    exception WHEN others then
+    return null; 
+end;
+
+--verify
+-- select udf_total_product_detai(110,2002) from dual;
+/*
+"UDF_TOTAL_PRODUCT_DETAI(110,2002)"
+"154065"                      
+*/
+
+
+
+-- develop sql program to call the udf and produce report
+/*
+Develop a SQL program to call these UDF and produce the following report
+
+Product#, product_name, year, Number_Product_sold, total_sale
+*/
+
+
+set serveroutput on;
+declare
+v_prod_no int;
+v_total_sale int;
+v_year int;
+v_month int;
+v_prodname varchar2(100);
+v_prod_sold int ;
+cursor c1 is   
+select  ol.product_no ,p.prod_name,extract(year from o.order_date) 
+from orders  o join orderline ol 
+on o.order_no=ol.order_no
+join returnprod rp on ol.orderline_no=rp.orderline_no
+join product p on p.product_no= ol.product_no
+group by ol.product_no,p.prod_name,extract(year from o.order_date);
+
+begin
+    open c1;
+    dbms_output.put_line(rpad('Product NO',5) || rpad(' Product_name',15) ||rpad( 'Year',15) ||rpad( 'NO_ofProd_SOLD',15) ||rpad( 'Sales',15));
+    dbms_output.put_line('-----------------------------------------------------------------------------------------------');
+    loop
+    fetch c1 into v_prod_no,v_prodname,v_year;
+    exit when c1%notfound;
+     select udf_total_product_yearly(v_prod_no,v_year) into v_prod_sold from dual;
+     select udf_total_product_detai(v_prod_no,v_year) into v_total_sale from dual;
+ 
+  --  dbms_output.put_line(rpad(v_prod_no,5) || rpad( v_prodname,10) ||rpad( v_year,10) ||rpad( v_prod_sold,10) ||rpad( v_total_sale,10));
+    dbms_output.put_line(rpad(v_prod_no,5) || rpad( v_prodname,15) ||rpad( v_year,15) ||rpad( v_prod_sold,15) ||rpad( v_total_sale,15));
+    end loop;
+    close c1;
+end;
+/
+
+/*
+Produ Product_name  Year           NO_ofProd_SOLD Sales          
+-----------------------------------------------------------------------------------------------
+180  knee pad       2003           21             
+170  Keeping Gloves 2003           28             
+120  Table Tennis   2000           6              
+170  Keeping Gloves 2001           3              
+180  knee pad       2001           4              
+110  Ping Pong Paddl2002           3              154065         
+130  Hockey Stick   1999           3              
+160  Golf stick     2000           8              
+190  Soccer socks   2002           3              
+110  Ping Pong Paddl2003           25             
+190  Soccer socks   2000           2              503100         
+130  Hockey Stick   2000           14             
+120  Table Tennis   2002           4              171080         
+130  Hockey Stick   2002           4              1046295        
+150  Cricket Bat    2003           37             
+190  Soccer socks   2003           29             
+200  shocks         2003           30             3199980        
+180  knee pad       2002           3              
+200  shocks         2002           4              
+150  Cricket Bat    2002           3              702765         
+120  Table Tennis   2003           17             
+130  Hockey Stick   2003           30             
+140  Keeping Gloves 2003           31             
+160  Golf stick     2003           30             16248870       
+120  Table Tennis   2001           6              
+160  Golf stick     2001           1              
+140  Keeping Gloves 2002           2              121730         
+170  Keeping Gloves 2000           8              3124865        
+180  knee pad       2000           5              226225         
+110  Ping Pong Paddl2000           1              
+200  shocks         2001           3              
+200  shocks         2000           2              
+170  Keeping Gloves 2002           4              
+160  Golf stick     2002           3              
+
+
+PL/SQL procedure successfully completed.
+
+*/
+--------------------------------------------------------------------------------------------------------------------------------------------------
+/*
+* Develop a UDF to calculate
+
+o Sub-total (Gross sale)
+
+o Tax (if customer is supposed to pay tax)
+
+o Shipping charge based on shipping method
+
+Develop a SQL to show above calculations for each order.
+*/
+-- subtotal_gross 
+ create or replace function gross_sale(p_order_no int)
+    return int
+    IS
+    v_orderno int ;
+     v_grosssale int; 
+    begin
+     select o.order_no, sum((p.unit_price*ol.qty)-nvl(rp.AMOUNT_REFUNDED,0))  into  v_orderno ,v_grosssale
+     from orders o
+     join orderline  ol
+     on o.order_no=ol.order_no
+     join product p
+     on p.product_no=ol.product_no
+     left join returnprod rp on
+        ol.ORDERLINE_NO=rp.ORDERLINE_NO
+     group by o.order_no
+     having  o.order_no = p_order_no;
+    return v_grosssale;
+    end;
+	
+-- tax
+  
+create or replace function udf_tax_calculation(p_customer_no int)
+return int 
+as
+v_custnomer int ;
+v_order_no int;
+
+v_tax float;
+
+
+cursor c1 is 
+select o.order_no,c.customer_no,sum(t.tax_rate*o.subtotal) as tax_amount from customer c
+join orders o 
+on o.customer_no=c.customer_no
+join tax t
+on c.state=t.state
+group by  o.order_no,c.customer_no
+HAVING c.customer_no =p_customer_no ;
+begin
+open c1;
+    loop 
+    fetch c1 into v_order_no,v_custnomer,v_tax;
+    exit when c1%notfound;
+   return v_tax;
+    end loop;
+close c1;
+end;
+
+
+-- select udf_tax_calculation(1099) from dual;
+/*
+"UDF_TAX_CALCULATION(1099)"   
+"199"                         
+*/
+
+
+-- Shipping Charge;
+
+-- shipping charge 
+ create or replace  function udf_shipping_charge( p_order_no int)
+    return float
+    as
+    v_shipping_charge float;
+    v_shiping_method varchar2(30);
+    begin
+    select shipping_method into v_shiping_method  from orders
+    where order_no=p_order_no;
+    if v_shiping_method='Ground' or v_shiping_method='ground' or v_shiping_method='ground-air'
+    then select nvl(testing(p_order_no),0)*0.05 into v_shipping_charge from dual;
+    elsif v_shiping_method='1-day'or v_shiping_method='1day-air' or v_shiping_method='1day' then
+    select nvl(testing(p_order_no),0)*0.15 into v_shipping_charge from dual;
+    elsif v_shiping_method='2day'or v_shiping_method='2-day' or v_shiping_method='2day-air' then
+    select nvl(testing(p_order_no),0)*0.10 into v_shipping_charge from dual;
+    end if;
+    
+    return v_shipping_charge;
+    end; 

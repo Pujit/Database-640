@@ -1,0 +1,224 @@
+/*Q8: Advanced Query Processing: Using your database, answer the following queries (10%)
+*/
+--8 a
+select c.customer_no,c.fname || ' '||c.lname ,count(o.order_no)
+from customer c join orders o 
+on o.customer_no=c.customer_no
+group by c.customer_no,c.fname || ' '||c.lname 
+order by count(o.order_no) desc
+FETCH FIRST 20 PERCENT ROWS ONLY;
+
+/*
+"CUSTOMER_NO"                 "C.FNAME||''||C.LNAME"        "COUNT(O.ORDER_NO)"           
+"1084"                        "Eugenia Wooton"              "34"                          
+"1102"                        "Willard Parker"              "30"                          
+"1103"                        "Jullian Adams"               "28"                          
+"1099"                        "Ripkin James"                "27"                          
+"1100"                        "McKissick David"             "27"                          
+"1097"                        "Thomas Steward"              "26"                          
+"1101"                        "Bruce Ramond"                "26"                          
+"1095"                        "Murthy Bullit"               "25"                          
+"1098"                        "Bixler John"                 "25"                          
+"1096"                        "Stone Neil"                  "25"                          
+"1094"                        " Nagal Michael"              "25"                          
+"1085"                        "Michael Dunn"                "25"                          
+"1082"                        "Dusky Holman"                "20"                          
+"1023"                        "Jensen Maria"                "20"                          
+"1086"                        "Bruce Reed"                  "20"                          
+"1089"                        "Doris Blazek-White"          "20"                          
+"1076"                        "Catherine Thomas"            "19"                          
+"1000"                        "Roerig Jake"                 "18"                          
+"1090"                        "James Constable"             "18"                          
+"1087"                        "William C. Bullit"           "18"                          
+"1068"                        "Edward Halle"                "17"                          
+
+*/
+/*
+8.b: For each product (product number and product description),
+
+List the top three customers purchased in term of net sale
+*/
+-- b 
+select * from (
+select p.product_no,p.prod_name,c.customer_no,c.fname || ' '||c.lname ,count(o.order_no),sum(subtotal), 
+    rank() over (partition by p.product_no order by sum(subtotal) desc) rank_order
+from customer c join orders o 
+on o.customer_no=c.customer_no
+join orderline ol 
+on ol.order_no=o.order_no
+join product p on
+p.product_no = ol.product_no
+--select * from product
+group  by p.product_no,p.prod_name,c.customer_no,c.fname|| ' '||c.lname
+)
+where rank_order <4 and rownum <21
+
+/*
+"PRODUCT_NO"                  "PROD_NAME"                   "CUSTOMER_NO"                 "C.FNAME||''||C.LNAME"        "COUNT(O.ORDER_NO)"           "SUM(SUBTOTAL)"               "RANK_ORDER"                  
+"110"                         "Ping Pong Paddles "          "1067"                        "Don Harris"                  "6"                           "13426775"                    "1"                           
+"110"                         "Ping Pong Paddles "          "1068"                        "Edward Halle"                "5"                           "8607700"                     "2"                           
+"110"                         "Ping Pong Paddles "          "1084"                        "Eugenia Wooton"              "14"                          "8215445"                     "3"                           
+"120"                         "Table Tennis"                "1068"                        "Edward Halle"                "6"                           "15869500"                    "1"                           
+"120"                         "Table Tennis"                "1067"                        "Don Harris"                  "2"                           "6614675"                     "2"                           
+"120"                         "Table Tennis"                "1084"                        "Eugenia Wooton"              "7"                           "6195110"                     "3"                           
+"130"                         "Hockey Stick"                "1067"                        "Don Harris"                  "6"                           "13340370"                    "1"                           
+"130"                         "Hockey Stick"                "1068"                        "Edward Halle"                "5"                           "9130575"                     "2"                           
+"130"                         "Hockey Stick"                "1084"                        "Eugenia Wooton"              "13"                          "8083955"                     "3"                           
+"140"                         "Keeping Gloves HQ"           "1068"                        "Edward Halle"                "5"                           "15825750"                    "1"                           
+"140"                         "Keeping Gloves HQ"           "1067"                        "Don Harris"                  "5"                           "13330025"                    "2"                           
+"140"                         "Keeping Gloves HQ"           "1084"                        "Eugenia Wooton"              "13"                          "8086000"                     "3"                           
+"150"                         "Cricket Bat"                 "1068"                        "Edward Halle"                "7"                           "16163275"                    "1"                           
+"150"                         "Cricket Bat"                 "1067"                        "Don Harris"                  "4"                           "13329975"                    "2"                           
+"150"                         "Cricket Bat"                 "1084"                        "Eugenia Wooton"              "12"                          "8467365"                     "3"                           
+"160"                         "Golf stick"                  "1068"                        "Edward Halle"                "7"                           "17448435"                    "1"                           
+"160"                         "Golf stick"                  "1067"                        "Don Harris"                  "3"                           "13057975"                    "2"                           
+"160"                         "Golf stick"                  "1084"                        "Eugenia Wooton"              "12"                          "8956150"                     "3"                           
+"170"                         "Keeping Gloves NQ"           "1068"                        "Edward Halle"                "6"                           "16931835"                    "1"                           
+
+*/
+
+
+/*
+8.c: For each product brand, List the top three states which customers have purchased the product brand. This should be done in term of gross sales (don’t include tax or shipping charges)
+*/
+--c.
+select brand,state, count_order,rank_order from (
+select p.brand,c.state,count(o.order_no) count_order 
+
+,  rank() over (partition by p.brand order by count(o.order_no) desc ) rank_order
+from customer c join orders o 
+on o.customer_no=c.customer_no
+join orderline ol 
+on ol.order_no=o.order_no
+join product p on
+p.product_no = ol.product_no
+group  by p.brand,c.state
+order by 1
+)
+where rank_order <4;
+
+/*
+"BRAND"                       "STATE"                       "COUNT_ORDER"                 "RANK_ORDER"                  
+"	addidas"                    "MN"                          "100"                         "1"                           
+"	addidas"                    "AK"                          "55"                          "2"                           
+"	addidas"                    "HI"                          "50"                          "3"                           
+"	vinex"                      "MN"                          "64"                          "1"                           
+"	vinex"                      "AK"                          "43"                          "2"                           
+"	vinex"                      "HI"                          "43"                          "2"                           
+"puma"                        "MN"                          "159"                         "1"                           
+"puma"                        "HI"                          "121"                         "2"                           
+"puma"                        "AK"                          "104"                         "3"                           
+
+*/
+
+
+--8.d
+/*
+8.d: List those customers that their orders included all of our products
+
+*/
+with t as (select  product_no from products),
+p as (
+select  c.fname, c.lname ,ol.product_no,o.order_no  from orders o join orderline ol on
+o.order_no =ol.order_no
+join customer c  on c.customer_no=o.customer_no
+)
+select p.fname, p.lname, p.product_no,p.order_no,t.product_no from p join t on
+p.product_no=t.product_no and rownum <21;
+
+/*
+"FNAME"                       "LNAME"                       "PRODUCT_NO"                  "ORDER_NO"                    "PRODUCT_NO_1"                
+"Jensen"                      "Maria"                       "180"                         "1197"                        "180"                         
+"Edward"                      "Halle"                       "180"                         "1200"                        "180"                         
+"Jensen"                      "Maria"                       "180"                         "1204"                        "180"                         
+"Michael"                     "Bond"                        "180"                         "1208"                        "180"                         
+"Al"                          "Doering"                     "180"                         "1212"                        "180"                         
+"Edward"                      "Halle"                       "180"                         "1214"                        "180"                         
+"Roerig"                      "Jake"                        "180"                         "1217"                        "180"                         
+"Jensen"                      "Maria"                       "180"                         "1218"                        "180"                         
+"Donn"                        "Jenkins"                     "180"                         "1220"                        "180"                         
+"Michael"                     "Dunn"                        "180"                         "1224"                        "180"                         
+"Dusky"                       "Holman"                      "180"                         "1229"                        "180"                         
+"Michael"                     "Dunn"                        "180"                         "1230"                        "180"                         
+"Dusky"                       "Holman"                      "180"                         "1233"                        "180"                         
+"Dusky"                       "Holman"                      "180"                         "1237"                        "180"                         
+"Michael"                     "Dunn"                        "180"                         "1245"                        "180"                         
+"Eugenia"                     "Wooton"                      "180"                         "1248"                        "180"                         
+"Eugenia"                     "Wooton"                      "180"                         "1253"                        "180"                         
+"Eugenia"                     "Wooton"                      "180"                         "1254"                        "180"                         
+"Eugenia"                     "Wooton"                      "180"                         "1261"                        "180"                         
+"Eugenia"                     "Wooton"                      "180"                         "1263"                        "180"                         
+
+*/
+
+-- 8.e
+/*
+8.e: List those employees that have sold all products
+*/
+with t as (select  product_no from products),
+p1 as (
+select  e.fname, e.lname ,ol.product_no,p.prod_name  from orders o join orderline ol on
+o.order_no =ol.order_no
+join employee e  on e.employee_no=o.employee_no
+join product p on p.product_no= ol.product_no
+)
+select p1.fname, p1.lname,p1.prod_name, p1.product_no,t.product_no from p1 join t on
+p1.product_no=t.product_no and rownum <21;
+
+/*
+"FNAME"                       "LNAME"                       "PROD_NAME"                   "PRODUCT_NO"                  "PRODUCT_NO_1"                
+"Harrison"                    "Heisler"                     "Keeping Gloves NQ"           "170"                         "170"                         
+"Harrison"                    "Heisler"                     "knee pad"                    "180"                         "180"                         
+"Harrison"                    "Heisler"                     "Ping Pong Paddles "          "110"                         "110"                         
+"Harrison"                    "Heisler"                     "Cricket Bat"                 "150"                         "150"                         
+"Robert S."                   "Hanzdo"                      "Keeping Gloves HQ"           "140"                         "140"                         
+"Robert S."                   "Hanzdo"                      "Hockey Stick"                "130"                         "130"                         
+"Robert S."                   "Hanzdo"                      "Table Tennis"                "120"                         "120"                         
+"Robert S."                   "Hanzdo"                      "Keeping Gloves HQ"           "140"                         "140"                         
+"Robert S."                   "Hanzdo"                      "Hockey Stick"                "130"                         "130"                         
+"Robert S."                   "Hanzdo"                      "shocks"                      "200"                         "200"                         
+"Willard"                     "Doering"                     "Ping Pong Paddles "          "110"                         "110"                         
+"Michael"                     "Farmer"                      "shocks"                      "200"                         "200"                         
+"Michael"                     "Farmer"                      "Soccer socks"                "190"                         "190"                         
+"Michael"                     "Farmer"                      "Ping Pong Paddles "          "110"                         "110"                         
+"Ramond"                      "Constable"                   "Table Tennis"                "120"                         "120"                         
+"Ramond"                      "Constable"                   "Keeping Gloves HQ"           "140"                         "140"                         
+"Ramond"                      "Constable"                   "Hockey Stick"                "130"                         "130"                         
+"Ramond"                      "Constable"                   "knee pad"                    "180"                         "180"                         
+"Ramond"                      "Constable"                   "Soccer socks"                "190"                         "190"                         
+"Michael"                     "Farmer"                      "Hockey Stick"                "130"                         "130"                         
+"Michael"                     "Farmer"                      "Keeping Gloves HQ"           "140"                         "140"                         
+
+*/
+
+/*
+8..f: List every states with their highest total sale
+*/
+-- f state with total sales...
+select * from (
+select b.state, order_date,sum(subtotal) as total_sales
+,rank () over (partition by state order by sum(subtotal) desc) ranks
+from orders o
+join branch b on
+b.BRANCH_NO=o.branch_no
+group by o.order_date,b.state
+) 
+where ranks =1 and rownum <21;
+
+/*
+"STATE"                       "ORDER_DATE"                  "TOTAL_SALES"                 "RANKS"                       
+"AK"                          "30-AUG-03"                   "1232680"                     "1"                           
+"AZ"                          "06-NOV-03"                   "2317425"                     "1"                           
+"CA"                          "01-APR-03"                   "484515"                      "1"                           
+"CO"                          "19-JUN-03"                   "4187270"                     "1"                           
+"DC"                          "04-MAR-03"                   "3007140"                     "1"                           
+"DE"                          "10-JUN-03"                   "17862595"                    "1"                           
+"FL"                          "11-JUN-03"                   "6601480"                     "1"                           
+"HI"                          "14-JUN-03"                   "1892395"                     "1"                           
+"ID"                          "03-APR-03"                   "2658640"                     "1"                           
+"IL"                          "08-JUN-03"                   "2297530"                     "1"                           
+"MN"                          "19-JUN-03"                   "4351580"                     "1"                           
+"NV"                          "18-JUN-02"                   "2047250"                     "1"                           
+"OR"                          "16-AUG-02"                   "3903475"                     "1"                           
+
+*/

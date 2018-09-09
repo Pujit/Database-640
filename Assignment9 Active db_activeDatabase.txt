@@ -1,0 +1,105 @@
+/*Q9: Active databases: Using your database version
+
+Sales requirements
+
+If any product is sold to a customer and there is enough product on hand
+
+Then the QOH column in product table should be updated.(You should think about creating a trigger).
+
+else customer should be informed (email) that you are out of stock and products will be shipped on this date (to be calculated)
+
+the quantity ordered should be placed on back orders
+
+Order to vendor should be placed
+
+> All our vendor has 3 days no charge delivery and 5% charge for ‘1 Day’ delivery
+
+> Order date, expected receiving date, actual received date, shipper (similar shippers that we use for our sales
+
+> Orders rec’d from vendor should increase the QOH
+
+> Validate your development with your own test data and make sure it is posted in your report then rollback your changes
+
+> All orders should be shipped 5 days after order date.
+
+> Be careful, this should be done for the new orders not the old transaction.
+
+> Validate your development with your own test data and make sure it is posted in your report then rollback your change
+*/
+
+
+drop trigger update_qoh;
+create or replace trigger update_qoh
+before insert on prodvendor
+for each row
+declare
+v_qoh int;
+v_qoh_total int;
+begin
+SELECT qoh into v_qoh from product where product_no=:new.product_no;
+dbms_output.put_line('test :'|| v_qoh );
+v_qoh_total:=v_qoh+:new.vend_qty;
+update product set qoh = v_qoh_total where product_no=:new.product_no;
+end;
+/
+
+
+
+----
+
+create or replace trigger reduce_qoh_orderline
+before insert on orderline
+for each row
+declare
+v_qoh int;
+v_qoh_total int;
+begin
+SELECT qoh into v_qoh from product where product_no=:new.product_no;
+dbms_output.put_line('test :'|| v_qoh );
+v_qoh_total:=v_qoh-:new.qty;
+update product set qoh = v_qoh_total where product_no=:new.product_no;
+end;
+/
+
+----
+
+
+execute sp_sales_in_progress(120,33);
+create or replace procedure sp_sales_in_progress( p_prod_no int,p_qoh int)
+as
+/* the value to be inserted are statically defined here for the new product.*/
+
+v_order_no int := 1155;
+v_order_line int:=222;
+v_employee_no int := 1042;
+v_customer_no int :=1099; 
+v_branch_no int:=108;
+--  variables for prodvendor table
+v_po_no int := 222;    
+v_vend_qty  int := 400;
+v_dprice int := 24;
+v_vprice_no int :=107;
+v_vprice int :=57;
+v_discount float := 0.01 ;
+v_qoh_in_prod_table int;
+v_vendor_no int;
+begin
+select qoh into v_qoh_in_prod_table from product where product_no=p_prod_no ;
+if v_qoh_in_prod_table > p_qoh then 
+   -- execute immediate 'insert into orderline  values('|| v_order_line||','||p_prod_no||','||p_qoh||','||v_order_no||')';
+   insert into orderline  values( v_order_line,p_prod_no,p_qoh,v_order_no);
+
+else 
+    dbms_output.put_line('We are out of stock for the product orderd.Email has been sent.');
+   -- update product set  back_order=p_qoh where product_no=p_prod_no ;
+   select vendor_no into v_vendor_no from vendorprice where product_no =p_prod_no;
+
+   execute immediate 'insert into prodvendor values('|| v_po_no||','||v_vendor_no||','||p_prod_no||','||sysdate||','||sysdate+5||','||sysdate||','||p_qoh||','||v_dprice||')';
+  execute immediate 'insert into vendorprice values ('||v_vprice_no||','||v_vendor_no||','||p_prod_no||','||v_vprice||','||v_discount||','||sysdate||','||sysdate||')';
+  
+
+end if;
+end;
+/
+
+select * from prodvendor;
