@@ -1,0 +1,433 @@
+/*
+2.1 Add employee commission to the database (10%)
+Expand your database to support paying commission to employees. Your expansion should support the following requirements:
+
+*/
+
+-- 4.Report 1:
+--question 2.1 
+--2.
+drop table sales_commission;
+create table sales_commission(
+order_no int,
+product_no int,
+sales_date date,
+employee_no int,
+commission_amt float)
+;
+
+drop table return_commission;
+create table return_commission(
+order_no int,
+product_no int,
+return_date date,
+employee_no int,
+commission_amt float)
+;
+commit;
+ 
+ drop trigger sales_commission;
+create or replace trigger sales_commission
+before insert on orders_mv
+for each row
+declare
+v_commissionamt float;
+v_temp int;
+v_prodno int;
+begin
+v_temp := :new.order_no;
+dbms_output.put_line('order no : '|| v_temp);
+     insert into sales_commission(order_no,product_no,sales_date,employee_no,commission_amt )
+    values(:new.order_no,:new.product_no,:new.order_date ,:new.employee_no,:new.commission);   
+end;
+
+
+truncate table sales_commission;
+drop table orders_mv;
+create table  orders_mv  as 
+    select o.order_no,o.order_date,o.employee_no,o.subtotal,e.rate,ol.product_no
+    from orders o join orderline ol 
+    on o.order_no=ol.order_no
+    join employee e 
+    on e.employee_no= o.employee_no;
+
+alter table orders_mv add commission float;
+alter table return_prod_mv add commission float;
+
+truncate table orders_mv;
+
+--select * from  return_prod_mv ;--orders_mv
+--drop table orders_mv
+/*create table  orders_mv  as 
+--  create table return_prod_mv as
+select o.order_no,o.order_date,o.employee_no,o.subtotal,e.rate,ol.product_no
+from orders o join orderline ol 
+on o.order_no=ol.order_no
+join employee e 
+on e.employee_no= o.employee_no
+*/
+
+create or replace procedure p_commission_sales
+as
+v_commission float;
+v_description varchar2(500);
+v_order_no int;
+v_order_date date;
+v_product_no int ;
+v_employee_no int;
+v_subtotal int;
+v_rate int;
+cursor c1 is  
+select o.order_no,o.order_date,o.employee_no,o.subtotal,e.rate,ep.description,ol.product_no
+from orders o join orderline ol 
+on o.order_no=ol.order_no
+join employee e 
+on e.employee_no= o.employee_no
+join employee_position ep
+on  ep.position=e.position
+;
+begin
+execute immediate 'truncate table orders_mv';
+open c1;
+    loop
+    fetch c1 into v_order_no,v_order_date,v_employee_no,v_subtotal,v_rate,v_description,v_product_no;
+    exit when c1%notfound;
+    v_commission :=v_rate*v_subtotal/100;
+     
+    insert into orders_mv (order_no,order_date,employee_no,subtotal,rate,description,product_no,commission)
+                values (v_order_no,v_order_date,v_employee_no,v_subtotal,v_rate,v_description,v_product_no,v_commission);
+    end loop;
+close c1;
+end;
+
+SELECT * FROM SALES_COMMISSION;
+
+EXECUTE p_commission_sales;
+SELECT * FROM SALES_COMMISSION;
+
+
+
+/*
+"ORDER_NO"                    "PRODUCT_NO"                  "SALES_DATE"                  "EMPLOYEE_NO"                 "COMMISSION_AMT"              
+"1193"                        "190"                         "10-MAY-02"                   "1042"                        "890"                         
+"1193"                        "120"                         "10-MAY-02"                   "1042"                        "890"                         
+"1193"                        "130"                         "10-MAY-02"                   "1042"                        "890"                         
+"1193"                        "140"                         "10-MAY-02"                   "1042"                        "890"                         
+"1193"                        "150"                         "10-MAY-02"                   "1042"                        "890"                         
+"1194"                        "120"                         "11-MAY-02"                   "1042"                        "3243.5"                      
+"1194"                        "130"                         "11-MAY-02"                   "1042"                        "3243.5"                      
+"1194"                        "140"                         "11-MAY-02"                   "1042"                        "3243.5"                      
+"1194"                        "110"                         "11-MAY-02"                   "1042"                        "3243.5"                      
+"1194"                        "130"                         "11-MAY-02"                   "1042"                        "3243.5"                      
+"1194"                        "140"                         "11-MAY-02"                   "1042"                        "3243.5"                      
+"1196"                        "140"                         "13-MAY-02"                   "1047"                        "24180.25"                    
+"1196"                        "130"                         "13-MAY-02"                   "1047"                        "24180.25"                    
+"2011"                        "200"                         "30-JUL-03"                   "1038"                        "2.5"                         
+"2012"                        "110"                         "30-JUL-03"                   "1039"                        "0"                           
+"2013"                        "120"                         "30-JUL-03"                   "1037"                        "0"                           
+
+"2350"                        "130"                         "06-NOV-03"                   "1087"                        "0"                           
+"2350"                        "140"                         "06-NOV-03"                   "1087"                        "0"                           
+"2360"                        "130"                         "07-NOV-03"                   "1088"                        "517"                         
+"2371"                        "150"                         "11-NOV-03"                   "1011"                        "0"                           
+"2372"                        "160"                         "11-NOV-03"                   "1042"                        "24975"                       
+"2432"                        "130"                         "09-DEC-03"                   "1011"                        "0"                           
+"2434"                        "150"                         "10-DEC-03"                   "1020"                        "0"                           
+"2444"                        "160"                         "13-DEC-03"                   "1062"                        "0"                           
+"2453"                        "170"                         "15-DEC-03"                   "1087"                        "0"                           
+"2465"                        "180"                         "19-DEC-03"                   "1088"                        "625"                         
+"2468"                        "120"                         "19-DEC-03"                   "1010"                        "0"                           
+"2477"                        "120"                         "26-DEC-03"                   "1042"                        "600"                         
+
+
+
+-- return sales and commission
+/*
+3. Any time there is return on sale, a trigger should insert the return commission amount to return commission table 
+along with order number, product number, date, and employee number.
+*/ 
+create or replace trigger return_commission
+before insert on return_prod_mv
+for each row
+declare
+v_commissionamt float;
+v_temp int;
+v_prodno int;
+begin
+v_temp := :new.order_no;
+   insert into return_commission(order_no,product_no,return_date,employee_no,commission_amt )
+    values(:new.order_no,:new.product_no,:new.order_date ,:new.employee_no,:new.commission);   
+end;
+
+
+
+create or replace procedure p_commission_return
+as
+v_commission float;
+v_order_no int;
+v_order_date date;
+v_product_no int ;
+v_employee_no int;
+v_refund int;
+v_rate int;
+cursor c1 is  
+select o.order_no,o.order_date,o.employee_no,nvl(amount_refunded,0),e.rate,ol.product_no
+from orders o join orderline ol 
+on o.order_no=ol.order_no
+join employee e 
+on e.employee_no= o.employee_no
+join employee_position ep
+on  ep.position=e.position
+join returnprod rp
+on ol.orderline_no=rp.orderline_no
+;
+begin
+open c1;
+loop
+    fetch c1 into v_order_no,v_order_date,v_employee_no,v_refund,v_rate,v_product_no;
+    exit when c1%notfound;
+    v_commission :=v_rate*v_refund/100;
+    -- select nvl( udf_comm_amt(v_order_no),0) into v_commissionamt from dual; 
+    insert into return_prod_mv (order_no,order_date,employee_no,subtotal,rate,product_no,commission)
+                values (v_order_no,v_order_date,v_employee_no,v_refund,v_rate,v_product_no,v_commission);
+end loop;
+close c1;
+end;
+
+
+
+/*
+"ORDER_NO"                    "PRODUCT_NO"                  "RETURN_DATE"                 "EMPLOYEE_NO"                 "COMMISSION_AMT"              
+"1327"                        "160"                         "01-JAN-03"                   "1000"                        "0"                           
+"1328"                        "180"                         "01-JAN-03"                   "1000"                        "0"                           
+"1329"                        "140"                         "01-JAN-03"                   "1000"                        "0"                           
+"1329"                        "150"                         "01-JAN-03"                   "1000"                        "0"                           
+"1329"                        "160"                         "01-JAN-03"                   "1000"                        "0"                           
+"1329"                        "170"                         "01-JAN-03"                   "1000"                        "0"                           
+"1329"                        "190"                         "01-JAN-03"                   "1000"                        "0"                           
+"1329"                        "200"                         "01-JAN-03"                   "1000"                        "0"                           
+"1330"                        "150"                         "01-JAN-03"                   "1000"                        "0"                           
+"1066"                        "130"                         "07-MAY-99"                   "1003"                        "3.5"                         
+"1025"                        "130"                         "29-APR-99"                   "1005"                        "350"                         
+"1027"                        "130"                         "06-APR-99"                   "1005"                        "70"                          
+"1067"                        "120"                         "07-JAN-00"                   "1004"                        "70"                          
+"1067"                        "120"                         "07-JAN-00"                   "1004"                        "35"                          
+"1067"                        "130"                         "07-JAN-00"                   "1004"                        "14"                          
+"1067"                        "160"                         "07-JAN-00"                   "1004"                        "7"                           
+"1067"                        "170"                         "07-JAN-00"                   "1004"                        "14"                          
+"1067"                        "170"                         "07-JAN-00"                   "1004"                        "56"                          
+"1069"                        "130"                         "15-JAN-00"                   "1003"                        "18.2"                        
+"1069"                        "130"                         "15-JAN-00"                   "1003"                        "0"                           
+"1069"                        "130"                         "15-JAN-00"                   "1003"                        "0"                           
+"1069"                        "160"                         "15-JAN-00"                   "1003"                        "10.5"                        
+"1070"                        "120"                         "21-FEB-00"                   "1003"                        "70"                          
+"1070"                        "120"                         "21-FEB-00"                   "1003"                        "0"                           
+"1070"                        "120"                         "21-FEB-00"                   "1003"                        "0"                           
+"1070"                        "170"                         "21-FEB-00"                   "1003"                        "84"                          
+"1071"                        "130"                         "07-MAR-00"                   "1003"                        "56"                          
+"1071"                        "130"                         "07-MAR-00"                   "1003"                        "0"                           
+"1071"                        "130"                         "07-MAR-00"                   "1003"                        "0"                           
+"1071"                        "130"                         "07-MAR-00"                   "1003"                        "0"                           
+"1072"                        "130"                         "10-APR-00"                   "1003"                        "350"                         
+"1072"                        "160"                         "10-APR-00"                   "1003"                        "490"                         
+"1072"                        "160"                         "10-APR-00"                   "1003"                        "0"                           
+"1072"                        "160"                         "10-APR-00"                   "1003"                        "0"                           
+"1073"                        "120"                         "15-APR-00"                   "1003"                        "35"                          
+"1073"                        "170"                         "15-APR-00"                   "1003"                        "59.5"                        
+"1073"                        "170"                         "15-APR-00"                   "1003"                        "0"                           
+"1073"                        "170"                         "15-APR-00"                   "1003"                        "0"                           
+"2230"                        "150"                         "02-OCT-03"                   "1014"                        "0"                           
+"2230"                        "170"                         "02-OCT-03"                   "1014"                        "0"                           
+"2230"                        "190"                         "02-OCT-03"                   "1014"                        "0"                           
+"2231"                        "130"                         "02-OCT-03"                   "1011"                        "0"                           
+"2231"                        "150"                         "02-OCT-03"                   "1011"                        "0"                           
+"2231"                        "170"                         "02-OCT-03"                   "1011"                        "0"                           
+"2182"                        "130"                         "12-SEP-03"                   "1037"                        "0"                           
+"2225"                        "110"                         "27-SEP-03"                   "1080"                        "0"                           
+
+*/
+
+
+
+--2.4
+--Report1
+/*
+Report 1: Use these two sales and return commission tables to calculate the monthly commission.
+ This report should contain: employee number, month, year, sales commission, return commission, and net commission.
+*/
+
+select sc.order_no,sc.product_no,sc.employee_no,extract(year from sales_date)as years,extract(month from sales_date) as months
+    ,sum(sc.commission_amt)as commission,sum(rc.commission_amt) as return_commission,
+     sum(sc.commission_amt)-sum(rc.commission_amt) as "net commission"
+from sales_commission sc
+left join RETURN_COMMISSION rc on 
+    sc.order_no=rc.order_no
+group by sc.order_no,sc.product_no,sc.employee_no,
+        extract(year from sales_date),
+        extract(month from sales_date);
+		
+    select sc.order_no,sc.product_no,sc.employee_no,extract(year from sales_date) as years,to_char(sales_date,'MON')as months
+    ,sum(NVL(sc.commission_amt,0))as commission,sum(NVL(rc.commission_amt,0)) as return_commission,
+     sum(NVL(sc.commission_amt,0))-sum(NVL(rc.commission_amt,0)) as "net commission"
+    from sales_commission sc
+    left join RETURN_COMMISSION rc on 
+    sc.order_no=rc.order_no
+    group by sc.order_no,sc.product_no,sc.employee_no,
+        extract(year from sales_date),
+        to_char(sales_date,'MON');		
+		
+		
+/*
+
+"ORDER_NO"                    "PRODUCT_NO"                  "EMPLOYEE_NO"                 "YEARS"                       "MONTHS"                      "COMMISSION"                  "RETURN_COMMISSION"           "net commission"              
+"1193"                        "140"                         "1042"                        "2002"                        "MAY"                         "890"                         "0"                           "890"                         
+"1194"                        "130"                         "1042"                        "2002"                        "MAY"                         "6487"                        "0"                           "6487"                        
+"1197"                        "110"                         "1047"                        "2002"                        "MAY"                         "17236"                       "0"                           "17236"                       
+"1197"                        "140"                         "1047"                        "2002"                        "MAY"                         "17236"                       "0"                           "17236"                       
+"1197"                        "160"                         "1047"                        "2002"                        "MAY"                         "17236"                       "0"                           "17236"                       
+"1200"                        "140"                         "1047"                        "2002"                        "MAY"                         "29503.5"                     "0"                           "29503.5"                     
+"1200"                        "160"                         "1047"                        "2002"                        "MAY"                         "29503.5"                     "0"                           "29503.5"                     
+"1200"                        "180"                         "1047"                        "2002"                        "MAY"                         "29503.5"                     "0"                           "29503.5"                     
+"1204"                        "200"                         "1047"                        "2002"                        "MAY"                         "21807.75"                    "0"                           "21807.75"                    
+"1214"                        "160"                         "1046"                        "2002"                        "MAY"                         "17113.75"                    "0"                           "17113.75"                    
+"1217"                        "180"                         "1046"                        "2002"                        "JUN"                         "45226.75"                    "0"                           "45226.75"                    
+"1217"                        "190"                         "1046"                        "2002"                        "JUN"                         "45226.75"                    "0"                           "45226.75"                    
+"1218"                        "140"                         "1046"                        "2002"                        "JUN"                         "43210"                       "0"                           "43210"                       
+"1218"                        "170"                         "1046"                        "2002"                        "JUN"                         "43210"                       "0"                           "43210"                       
+"1218"                        "180"                         "1046"                        "2002"                        "JUN"                         "43210"                       "0"                           "43210"                       
+"1220"                        "160"                         "1046"                        "2002"                        "JUN"                         "6677"                        "0"                           "6677"                        
+"1451"                        "150"                         "1014"                        "2003"                        "FEB"                         "3.5"                         "0"                           "3.5"                         
+"2296"                        "200"                         "1035"                        "2003"                        "OCT"                         "0"                           "0"                           "0"                           
+"2307"                        "110"                         "1067"                        "2003"                        "OCT"                         "0"                           "0"                           "0"                           
+"1475"                        "200"                         "1034"                        "2003"                        "FEB"                         "0"                           "0"                           "0"                           
+"1073"                        "200"                         "1003"                        "2000"                        "APR"                         "99713.6"                     "94.5"                        "99619.1"                     
+"1873"                        "160"                         "1035"                        "2003"                        "JUN"                         "0"                           "0"                           "0"                           
+"1873"                        "190"                         "1035"                        "2003"                        "JUN"                         "0"                           "0"                           "0"                           
+"1873"                        "200"                         "1035"                        "2003"                        "JUN"                         "0"                           "0"                           "0"                           
+"1885"                        "170"                         "1040"                        "2003"                        "JUN"                         "0"                           "0"                           "0"                           
+"1896"                        "150"                         "1052"                        "2003"                        "JUN"                         "0"                           "0"                           "0"                           
+"2034"                        "160"                         "1070"                        "2003"                        "AUG"                         "15430.5"                     "0"                           "15430.5"                     
+"2093"                        "170"                         "1069"                        "2003"                        "AUG"                         "17980"                       "0"                           "17980"                       
+"2135"                        "150"                         "1045"                        "2003"                        "AUG"                         "6166"                        "0"                           "6166"                        
+"2145"                        "120"                         "1035"                        "2003"                        "AUG"                         "0"                           "0"                           "0"                           
+"2176"                        "160"                         "1086"                        "2003"                        "SEP"                         "56992.95"                    "0"                           "56992.95"                    
+"1096"                        "160"                         "1016"                        "2001"                        "DEC"                         "14760.9"                     "0"                           "14760.9"                     
+"1096"                        "130"                         "1016"                        "2001"                        "DEC"                         "29521.8"                     "0"                           "29521.8"                     
+"1150"                        "140"                         "1032"                        "2002"                        "MAR"                         "8687"                        "0"                           "8687"                        
+"1150"                        "160"                         "1032"                        "2002"                        "MAR"                         "8687"                        "0"                           "8687"                        
+"1209"                        "130"                         "1046"                        "2002"                        "MAY"                         "8318"                        "0"                           "8318"                        
+"1209"                        "120"                         "1046"                        "2002"                        "MAY"                         "8318"                        "0"                           "8318"                        
+"1209"                        "200"                         "1046"                        "2002"                        "MAY"                         "8318"                        "0"                           "8318"                        
+"1231"                        "180"                         "1054"                        "2002"                        "JUN"                         "24369.9"                     "0"                           "24369.9"                     
+"1231"                        "190"                         "1054"                        "2002"                        "JUN"                         "24369.9"                     "0"                           "24369.9"                     
+"1239"                        "110"                         "1053"                        "2002"                        "JUL"                         "11535.9"                     "0"                           "11535.9"                     
+"1250"                        "140"                         "1061"                        "2002"                        "AUG"                         "1492"                        "0"                           "1492"                        
+"1259"                        "110"                         "1061"                        "2002"                        "AUG"                         "40634.25"                    "0"                           "40634.25"                    
+"1259"                        "160"                         "1061"                        "2002"                        "AUG"                         "40634.25"                    "0"                           "40634.25"                    
+"1287"                        "130"                         "1066"                        "2002"                        "OCT"                         "38889"                       "0"                           "38889"                       
+"1333"                        "120"                         "1000"                        "2003"                        "JAN"                         "0"                           "0"                           "0"                           
+"1497"                        "150"                         "1040"                        "2003"                        "FEB"                         "0"                           "0"                           "0"                           
+"1579"                        "110"                         "1070"                        "2003"                        "MAR"                         "860"                         "0"                           "860"                         
+"1617"                        "170"                         "1037"                        "2003"                        "MAR"                         "0"                           "0"                           "0"                           
+"1638"                        "200"                         "1059"                        "2003"                        "APR"                         "0"                           "0"                           "0"                           
+"1697"                        "170"                         "1042"                        "2003"                        "APR"                         "85062.75"                    "0"                           "85062.75"                    
+"2263"                        "170"                         "1011"                        "2003"                        "OCT"                         "0"                           "0"                           "0"                           
+"2283"                        "170"                         "1067"                        "2003"                        "OCT"                         "0"                           "0"                           "0"                           
+"2339"                        "130"                         "1062"                        "2003"                        "NOV"                         "0"                           "0"                           "0"                           
+
+
+*/
+		
+		
+--Report 2.5:	
+/*
+Report 2: create a monthly commission report to show the net monthly commission and final total for the year. Include your revised database script. The format should be as follows
+
+Emp emp Jan Feb Mar … year
+
+Num Name comm comm comm … Total
+*/
+select * from 
+(select  employee_no,months,"net commission"
+from commission_info 
+)
+pivot(
+sum( "net commission") for months  in ('JAN','FEB','MAR','APR','MAY','JUN','JLY','AUG','SEP','OCT','NOV','DEC')
+
+);
+	
+
+	
+/*	
+"EMPLOYEE_NO"                 "'JAN'"                       "'FEB'"                       "'MAR'"                       "'APR'"                       "'MAY'"                       "'JUN'"                       "'JLY'"                       "'AUG'"                       "'SEP'"                       "'OCT'"                       "'NOV'"                       "'DEC'"                       
+"1000"                        "0"                           ""                            ""                            ""                            ""                            ""                            ""                            ""                            ""                            ""                            ""                            ""                            
+"1003"                        "517552"                      "402515.4"                    "28954.8"                     "619716.3"                    "930048.7"                    "24307.5"                     ""                            "15080.8"                     "13928.6"                     ""                            ""                            ""                            
+"1013"                        ""                            "1983.5"                      ""                            ""                            ""                            ""                            ""                            ""                            ""                            ""                            ""                            ""                            
+"1036"                        ""                            "8693.3"                      "467686.8"                    "935049.5"                    "1059464.35"                  "19051487"                    ""                            "27506.85"                    "847086.45"                   "39962.65"                    "69052.2"                     "42579.25"                    
+"1041"                        ""                            "0"                           "0"                           "0"                           "0"                           "0"                           ""                            "0"                           "0"                           "0"                           "0"                           "0"                           
+"1011"                        ""                            ""                            ""                            ""                            ""                            ""                            ""                            "0"                           "0"                           "0"                           "0"                           "0"                           
+"1030"                        ""                            "0"                           "0"                           "0"                           "0"                           "0"                           ""                            ""                            ""                            ""                            ""                            ""                            
+"1042"                        ""                            "995"                         "581.75"                      "1155637.5"                   "1015678.25"                  "9651.5"                      ""                            "64404.25"                    "35232.5"                     "94270.25"                    "52508.75"                    "131490.75"                   
+"1062"                        ""                            ""                            ""                            ""                            ""                            ""                            ""                            "0"                           "0"                           "0"                           "0"                           "0"                           
+"1074"                        ""                            ""                            ""                            ""                            ""                            ""                            ""                            "0"                           "0"                           "0"                           "0"                           "0"                           
+"1046"                        ""                            ""                            ""                            ""                            "212100.25"                   "995667.5"                    ""                            ""                            ""                            ""                            ""                            ""                            
+"1065"                        ""                            "11911.75"                    "161.25"                      "709.25"                      "295"                         "1082.5"                      ""                            "54021.25"                    "5757"                        "140257.5"                    "92124.5"                     ""                            
+"1047"                        ""                            ""                            ""                            ""                            "1556639.25"                  ""                            ""                            ""                            ""                            ""                            ""                            ""                            
+"1016"                        ""                            ""                            "74555.6"                     ""                            ""                            ""                            ""                            ""                            ""                            ""                            ""                            "138733.7"                    
+"1076"                        ""                            "14735.25"                    "107.5"                       "667.5"                       "7440"                        "3167.5"                      ""                            "18575"                       ""                            ""                            ""                            "225075"                      
+"1024"                        ""                            "0"                           "0"                           "0"                           "0"                           "0"                           ""                            ""                            ""                            ""                            ""                            ""                            
+"1032"                        ""                            "19698.7"                     "209776.7"                    "6683.6"                      "155824.2"                    "83485.85"                    ""                            ""                            ""                            ""                            ""                            ""                            
+"1054"                        ""                            ""                            ""                            ""                            ""                            "1159614"                     ""                            ""                            ""                            ""                            ""                            ""                            
+"1006"                        "0"                           ""                            ""                            ""                            ""                            ""                            ""                            ""                            ""                            ""                            ""                            ""                            
+"1088"                        ""                            ""                            ""                            ""                            ""                            ""                            ""                            "667.5"                       "1115004"                     "877.5"                       "517"                         "89928"                       
+"1001"                        "0"                           ""                            ""                            ""                            ""                            ""                            ""                            ""                            ""                            ""                            ""                            ""                            
+"1035"                        ""                            "0"                           "0"                           "0"                           "0"                           "0"                           ""                            "0"                           "0"                           "0"                           "0"                           "0"                           
+"1037"                        ""                            "0"                           "0"                           "0"                           "0"                           "0"                           ""                            "0"                           "0"                           "0"                           "0"                           "0"                           
+"1033"                        ""                            "317792.3"                    "846271.3"                    "657.3"                       "75009.2"                     "141249.85"                   ""                            ""                            ""                            ""                            ""                            ""                            
+"1043"                        ""                            "0"                           "0"                           "0"                           "0"                           "0"                           ""                            "0"                           ""                            ""                            ""                            ""                            
+"1087"                        ""                            ""                            ""                            ""                            ""                            ""                            ""                            "0"                           "0"                           "0"                           "0"                           "0"                           
+"1060"                        ""                            "114.75"                      "5798.55"                     "1329"                        "191.4"                       "2586"                        ""                            "522"                         "467374.95"                   ""                            ""                            ""                            
+"1069"                        ""                            "206.25"                      "107.5"                       "692.5"                       "293530"                      "108641.25"                   ""                            "20268.5"                     ""                            ""                            "1292975.25"                  ""                            
+"1070"                        ""                            "154"                         "860"                         "41958.25"                    "2311050"                     "97991"                       ""                            "93283"                       ""                            ""                            "1538225.5"                   ""                            
+"1073"                        ""                            ""                            ""                            ""                            ""                            ""                            ""                            "0"                           "0"                           "0"                           "0"                           "0"                           
+"1038"                        ""                            "1642.5"                      "42057"                       "792340.25"                   "400770.5"                    "165196"                      ""                            "44048.25"                    "2278.5"                      "22490.25"                    "1175"                        "29970"                       
+"1034"                        ""                            "0"                           "0"                           "0"                           "0"                           "0"                           ""                            ""                            ""                            ""                            ""                            ""                            
+"1029"                        "151662"                      "1303077.3"                   "48207.95"                    "4624.2"                      "2241.4"                      "9300.9"                      ""                            ""                            ""                            ""                            ""                            ""                            
+"1064"                        ""                            "0"                           "0"                           "0"                           "0"                           "0"                           ""                            "0"                           ""                            ""                            ""                            ""                            
+"1002"                        "115835"                      ""                            ""                            ""                            ""                            ""                            ""                            ""                            ""                            ""                            ""                            ""                            
+"1022"                        "6895052.8"                   "254"                         "20497.2"                     "40628"                       "1984"                        "5128"                        ""                            ""                            ""                            ""                            ""                            ""                            
+"1056"                        ""                            ""                            ""                            ""                            ""                            ""                            ""                            "0"                           "0"                           "0"                           "0"                           "0"                           
+"1039"                        ""                            "0"                           "0"                           "0"                           "0"                           "0"                           ""                            "0"                           "0"                           "0"                           "0"                           "0"                           
+"1059"                        ""                            "0"                           "0"                           "0"                           "0"                           "0"                           ""                            "0"                           "0"                           "0"                           "0"                           "0"                           
+"1028"                        "2301.6"                      "481546.8"                    "47746.3"                     "35572.25"                    "44357.25"                    "601739.95"                   ""                            ""                            ""                            ""                            ""                            ""                            
+"1061"                        ""                            ""                            ""                            ""                            ""                            ""                            ""                            "2687024.25"                  "436297.5"                    ""                            ""                            ""                            
+"1075"                        ""                            "0"                           "0"                           "0"                           "0"                           "0"                           ""                            "0"                           ""                            ""                            ""                            ""                            
+"1052"                        ""                            "0"                           "0"                           "0"                           "0"                           "0"                           ""                            "0"                           ""                            ""                            ""                            ""                            
+"1071"                        ""                            "0"                           "0"                           "0"                           "0"                           "0"                           ""                            "0"                           ""                            ""                            ""                            ""                            
+"1004"                        "1956895.5"                   ""                            ""                            "31507"                       "1169"                        ""                            ""                            ""                            ""                            ""                            ""                            ""                            
+"1040"                        ""                            "0"                           "0"                           "0"                           "0"                           "0"                           ""                            "0"                           "0"                           "0"                           "0"                           "0"                           
+"1025"                        ""                            "0"                           "0"                           "0"                           "0"                           "0"                           ""                            ""                            ""                            ""                            ""                            ""                            
+"1021"                        ""                            "0"                           "0"                           "0"                           "0"                           "0"                           ""                            ""                            ""                            ""                            ""                            ""                            
+"1015"                        ""                            "1887.2"                      "39438"                       "317.8"                       "21609"                       "6785379.51"                  ""                            "6921.6"                      "98799.75"                    ""                            "247.8"                       ""                            
+"1031"                        ""                            "0"                           "0"                           "0"                           "0"                           "0"                           ""                            ""                            ""                            ""                            ""                            ""                            
+"1010"                        ""                            ""                            ""                            ""                            ""                            ""                            ""                            "0"                           "0"                           "0"                           "0"                           "0"                           
+"1027"                        ""                            "0"                           "0"                           "0"                           "0"                           "0"                           ""                            ""                            ""                            ""                            ""                            ""                            
+"1084"                        ""                            ""                            ""                            ""                            ""                            ""                            ""                            "786722.5"                    "177733"                      "244807.5"                    "396582.5"                    "54496"                       
+"1014"                        ""                            "1428.7"                      ""                            ""                            ""                            ""                            ""                            "31150.35"                    "5334"                        "4294472.35"                  "78022"                       "130353.3"                    
+"1066"                        ""                            "337.5"                       "430"                         "2417.5"                      "29720.25"                    "1085"                        ""                            "21097.5"                     "2086490"                     "1340502"                     ""                            ""                            
+"1067"                        ""                            ""                            ""                            ""                            ""                            ""                            ""                            "0"                           "0"                           "0"                           "0"                           "0"                           
+"1077"                        ""                            "600"                         "107.5"                       "785191.75"                   "1302"                        "4920"                        ""                            "9740.25"                     ""                            ""                            ""                            "33343.5"                     
+"1045"                        ""                            "1095"                        "13317.25"                    "298057"                      "13868.5"                     "6303.75"                     ""                            "46824"                       "716463.25"                   "451.25"                      "14911.25"                    "22515.5"                     
+"1005"                        "42189"                       ""                            "644"                         "49075.25"                    "7840"                        ""                            ""                            ""                            ""                            ""                            ""                            ""                            
+"1078"                        ""                            "0"                           "0"                           "0"                           "0"                           "0"                           ""                            "0"                           ""                            ""                            ""                            ""                            
+"1008"                        ""                            ""                            ""                            ""                            ""                            ""                            ""                            "0"                           "0"                           "0"                           "0"                           "0"                           
+"1012"                        "0"                           "0"                           ""                            ""                            ""                            ""                            ""                            ""                            ""                            ""                            ""                            ""                            
+"1053"                        ""                            "6607.65"                     "64.5"                        "1183.5"                      "1368"                        "601834.5"                    ""                            "242433"                      ""                            ""                            ""                            ""                            
+"1086"                        ""                            ""                            ""                            ""                            ""                            ""                            ""                            "187731.6"                    "57850.45"                    "406"                         "61441.1"                     "875"                         
+"1020"                        ""                            ""                            ""                            ""                            ""                            ""                            ""                            "0"                           "0"                           "0"                           "0"                           "0"                           
+"1080"                        ""                            ""                            ""                            ""                            ""                            ""                            ""                            "1880"                        "449018.5"                    "357.5"                       "352.5"                       "6044.25"                     
+"1019"                        ""                            ""                            ""                            ""                            ""                            ""                            ""                            "0"                           "0"                           "0"                           "0"                           "0"                           
+"1023"                        "2030408.8"                   "268"                         "580"                         "36628"                       "15028.8"                     "2700.4"                      ""                            ""                            ""                            ""                            ""                            ""                            
+"1079"                        ""                            ""                            ""                            ""                            ""                            ""                            ""                            "0"                           "0"                           "0"                           "0"                           "0"                           
+"1026"                        ""                            "0"                           "0"                           "0"                           "0"                           "0"                           ""                            ""                            ""                            ""                            ""                            ""                            
+*/

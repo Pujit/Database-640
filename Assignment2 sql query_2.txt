@@ -1,0 +1,323 @@
+--2.2
+--Sales are only done by employees with the following positions: Sales Manager, Sales Representative, Customer Service, and Customer Service Manager. Develop a report to identify if any discrepancy exist.
+
+select distinct o.employee_no,e.fname,e.lname,e.position,ep.description
+from orders o join employee e on
+o.employee_no= e.employee_no
+join employee_position ep on
+e.position= ep.position
+and e.position not in (3,4,5,6);
+
+-- Here we see that the sales are being done by some other groups of users
+/*
+"EMPLOYEE_NO"                 "FNAME"                       "LNAME"                       "POSITION"                    "DESCRIPTION"                 
+"1026"                        "Don"                         "McMillan"                    "8"                           "Programmer"                  
+"1064"                        "Donald"                      "Halle"                       "2"                           "Branch Manager"              
+"1056"                        "Andrew"                      "Murthy"                      "7"                           "Technician"                  
+"1010"                        "Thomas"                      "Stansbury"                   "8"                           "Programmer"                  
+"1021"                        "Steward"                     "Nelson"                      "2"                           "Branch Manager"              
+"1011"                        "Steward"                     "Stansbury"                   "9"                           "Accountant"                  
+"1040"                        "David"                       "Geriach"                     "2"                           "Branch Manager"              
+"1027"                        "Doris"                       "McKissick"                   "2"                           "Branch Manager"              
+"1059"                        "Catherine"                   "Beckley"                     "2"                           "Branch Manager"              
+"1019"                        "Donn"                        "Parker"                      "8"                           "Programmer"                  
+"1020"                        "John"                        "Nilson"                      "9"                           "Accountant"                  
+"1043"                        "George"                      "Dupont"                      "2"                           "Branch Manager"              
+"1000"                        " Stefan"                     "Wyatt"                       "1"                           "CEO"                         
+"1087"                        "Jullian"                     "Wyatt"                       "2"                           "Branch Manager"              
+"1075"                        "George"                      "Reed"                        "2"                           "Branch Manager"              
+"1001"                        "Donald"                      "Wright"                      "2"                           "Branch Manager"              
+"1037"                        "Macy"                        "Harris"                      "2"                           "Branch Manager"              
+"1035"                        "James"                       "Holman"                      "2"                           "Branch Manager"              
+"1073"                        "Edward"                      "Polott"                      "8"                           "Programmer"                  
+"1052"                        " Stefan"                     "Worral"                      "2"                           "Branch Manager"              
+"1074"                        "Eugenia"                     "Dunn"                        "9"                           "Accountant"                  
+"1079"                        "James"                       "Wooton"                      "2"                           "Branch Manager"              
+"1031"                        "Sheela"                      "Katz"                        "2"                           "Branch Manager"              
+"1012"                        "Bill"                        "Somers"                      "2"                           "Branch Manager"              
+"1025"                        "Paul"                        "Miller"                      "7"                           "Technician"                  
+"1041"                        "Lee"                         "Forman"                      "2"                           "Branch Manager"              
+
+
+*/
+
+
+-- create a role called technicial and revoke the insert privilege on table orders; orderline
+		
+CREATE ROLE SalesManager;		
+CREATE ROLE CustomerServiceManager;		
+CREATE ROLE CustomerService;		
+CREATE ROLE SalesRepresentative;	
+
+create user 	Bruce	identified by 	Bruce	;
+grant connect,resource ,create session to Bruce;
+grant all on orders to SalesRepresentative;
+grant SalesRepresentative to Bruce;
+
+-------------------------------------------------------------------------------------------------------------------------------
+--2.2employee_termination date
+
+--* Employee termination date and reason for termination should be maintained. 
+-- This is similar to individual assignment. Develop a report to verify its existence in your database.
+
+-- insert the given data in a table
+
+update employee set end_date= to_date('2-Nov-86','dd-Mon-YY') where employee_no= 1079;
+update employee set end_date= to_date('1-May-96','dd-Mon-YY') where employee_no= 1080;
+update employee set end_date= to_date('3-Nov-80','dd-Mon-YY') where employee_no= 1081;
+update employee set end_date= to_date('6-May-78','dd-Mon-YY') where employee_no= 1082;
+update employee set end_date= to_date('30-Oct-99','dd-Mon-YY')where employee_no= 1083;
+update employee set end_date= to_date('12-Apr-04','dd-Mon-YY')where employee_no= 1084;
+update employee set end_date= to_date('13-Apr-02','dd-Mon-YY')where employee_no= 1085;
+update employee set end_date= to_date('13-Apr-95','dd-Mon-YY')where employee_no= 1086;
+update employee set end_date= to_date('13-Apr-90','dd-Mon-YY')where employee_no= 1087;
+update employee set end_date= to_date('13-Apr-96','dd-Mon-YY')where employee_no= 1088;
+update employee set end_date= to_date('14-Apr-94','dd-Mon-YY')where employee_no= 1089;
+
+select * from employee_status;
+
+update employee set status=3 where employee_no= 1079;
+update employee set status=3 where employee_no= 1080;
+update employee set status=3 where employee_no= 1081;
+update employee set status=3 where employee_no= 1082;
+update employee set status=3 where employee_no= 1083;
+update employee set status=3 where employee_no= 1084;
+update employee set status=3 where employee_no= 1085;
+update employee set status=3 where employee_no= 1086;
+update employee set status=3 where employee_no= 1087;
+update employee set status=3 where employee_no= 1088;
+update employee set status=3 where employee_no= 1089;
+
+
+-----------------------------------------------------------------------------------------------------------------------------------------
+/* Your orders should support shipping method. You could use similar shipping methods in OES2. 
+Develop a report to verify its existence and correctness.
+*/
+-- Your order should support shipping method:
+--verification.
+select * from employee where end_date is not null
+--shipping method 
+-- exixtance
+select order_no, shipping_method from orders
+-- all the order has the defined shipping method.
+select distinct(shipping_method) from orders;
+-- we have nine types shipping method.
+
+
+
+alter table orders add expected_ship_date date;
+update orders set expected_ship_date=order_date+5;
+update orders set ship_date = null;
+update orders set ship_date = order_date+6 where order_no>2000
+--
+-- verify if the shipdate between orderdate and expected ship date 
+select order_date,ship_date,expected_ship_date from orders where order_no>2000
+select order_date,ship_date,expected_ship_date from orders where order_no<=2000
+-- expected receive date
+
+-- update expected espected ship and receive date
+alter table orders add expected_receive_date
+date;
+
+-- expected receive date
+
+create or replace procedure sp_expected_receive_date
+as
+
+v_orderno int;
+v_shipping_method varchar2(45);
+cursor c1 is select order_no from orders;
+begin
+open  c1;
+loop
+ fetch c1 into v_orderno;
+ exit when c1%notfound;
+     update orders set expected_ship_date=order_date+5
+     where order_no=v_orderno;
+    select shipping_method into v_shipping_method from orders where order_no=v_orderno;
+    case when v_shipping_method='1-day' or  v_shipping_method='1day-air' or v_shipping_method='1day' then
+                update orders set expected_receive_date=expected_ship_date+1
+                where order_no=v_orderno;
+        when v_shipping_method='2-day' or  v_shipping_method='2day-air' or v_shipping_method='2day' then
+                update orders set expected_receive_date=expected_ship_date+2
+                where order_no=v_orderno;
+        else update orders set expected_receive_date=expected_ship_date+5 where order_no=v_orderno;
+    end case;
+ end loop; 
+ close c1;
+ end sp_expected_receive_date;
+ /
+ 
+execute  sp_expected_receive_date;
+-- verify 
+select * from orders;
+
+select * from orders;
+-- verify expected receive date
+select shipping_method,order_no,expected_ship_date,expected_receive_date from orders
+--
+
+-- shipping charge
+
+--shipping-charge
+-- It requres the gross_sale function to calculate the grosssale for the given ordernumber.  
+    create or replace function gross_sale(p_order_no int)
+    return int
+    IS
+    v_orderno int ;
+     v_grosssale int; 
+    begin
+     select  sum((p.unit_price*ol.qty)-nvl(rp.AMOUNT_REFUNDED,0))  into v_grosssale
+     from orders o
+     join orderline  ol
+     on o.order_no=ol.order_no
+     join product p
+     on p.product_no=ol.product_no
+     left join returnprod rp on
+        ol.ORDERLINE_NO=rp.ORDERLINE_NO
+     group by o.order_no
+     having  o.order_no = p_order_no;
+    return v_grosssale;
+    end;
+
+    
+create or replace  function udf_shipping_charge( p_order_no int)
+    return float
+    as
+    v_shipping_charge float;
+    v_shiping_method varchar2(30);
+    begin
+    select shipping_method into v_shiping_method  from orders
+    where order_no=p_order_no;
+    if v_shiping_method='Ground' or v_shiping_method='ground' or v_shiping_method='ground-air'
+    then select nvl(gross_sale(p_order_no),0)*0.05 into v_shipping_charge from dual;
+    elsif v_shiping_method='1-day'or v_shiping_method='1day-air' or v_shiping_method='1day' then
+    select nvl(gross_sale(p_order_no),0)*0.15 into v_shipping_charge from dual;
+    elsif v_shiping_method='2day'or v_shiping_method='2-day' or v_shiping_method='2day-air' then
+    select nvl(gross_sale(p_order_no),0)*0.10 into v_shipping_charge from dual;
+    end if;
+    
+    return v_shipping_charge;
+    end; 
+
+
+
+-- update shipping charge is update by the trigger below in orders table	
+drop table orders_mv;
+create table orders_mv as select * from orders where 1=2
+    
+create or replace trigger t_update_shipping_charge
+before insert on orders_mv
+for each row
+declare
+v_grosssubtotal int;
+v_subtotal int;
+
+v_temp int;
+v_shippingprice float;
+begin
+v_temp := :new.order_no;
+dbms_output.put_line('order no : '|| v_temp);
+select subtotal into v_subtotal  from orders where order_no= v_temp;
+if v_subtotal is null then
+     select nvl(testing(v_temp),0) into v_grosssubtotal from dual;     -- function that will calculate the subtotal for the given order
+    dbms_output.put_line('v_grosssubtotal: '|| v_grosssubtotal);
+    update orders set subtotal=v_grosssubtotal
+    where order_no=v_temp;
+end if;
+    select nvl(udf_shipping_charge(v_temp),0) into v_shippingprice from dual;
+    update orders set shipping_charge=v_shippingprice 
+    where order_no=v_temp;
+
+end;
+
+
+
+-- the below sp will insert record in orders_mv and trigger is fired which will update the shipping charge  and subtotal in orders
+
+create or replace procedure p_update_orders_grossSales
+as
+v_order_no orders.order_no%type;   
+v_order_date orders.order_date%type;
+v_ship_date orders.ship_date%TYPE;
+v_shipping_method orders.shipping_method%type;
+v_tax_status orders.tax_status%type;
+v_subtotal orders.subtotal%type;
+v_tax_amt orders.tax_amt%type;
+v_shipping_charge orders.shipping_charge%type;
+v_total_amt orders.total_amt%type;
+v_customer_no orders.customer_no%type;
+v_employee_no orders.employee_no%type;
+v_branch_no orders.branch_no%type;
+cursor c1 is select order_no,order_date,ship_date,shipping_method,tax_status, subtotal,tax_amt,shipping_charge,total_amt,customer_no,employee_no,branch_no from orders;
+
+begin
+open c1;
+loop
+    fetch c1 into v_order_no,v_order_date,v_ship_date,v_shipping_method,v_tax_status,v_subtotal,v_tax_amt,v_shipping_charge,v_total_amt,v_customer_no,v_employee_no,v_branch_no;
+    exit when c1%notfound;
+    insert into orders_mv (
+            order_no,order_date,ship_date,shipping_method,tax_status, subtotal,tax_amt,shipping_charge,total_amt,customer_no,employee_no,branch_no)
+        values (v_order_no,v_order_date,v_ship_date,v_shipping_method,v_tax_status,v_subtotal,v_tax_amt,v_shipping_charge,v_total_amt,v_customer_no,v_employee_no,v_branch_no);
+        
+    end loop;
+close c1;
+end;
+/
+
+execute p_update_orders_grossSales;
+
+
+
+-- 
+----Actual receive date..
+
+
+alter table orders add actual_receive_date date;
+update orders set actual_receive_date =ship_date+4;
+
+-- verify
+select shipping_method,ship_date,expected_receive_date, actual_receive_date from orders;
+
+---Tax_calculation..
+/*
+Your database should support calculation of tax based on customer state
+
+o Check whether the customer is supposed to pay taxes or not, if tax status is 'Y' (default) then the right tax is calculated depending on the STATE tax rate, otherwise no tax (zero).
+
+o Develop a report to show the calculation is correct
+*/
+
+
+
+create or replace procedure sp_tax_update
+as
+v_tax_status varchar(1);
+v_order_no int;
+v_state varchar(3);
+v_rate float;
+v_subtotal float;
+
+cursor c1 is 
+select o.order_no,o.tax_status,c.state,t.tax_rate,o.subtotal from customer c
+join orders o 
+on o.customer_no=c.customer_no
+join tax t
+on c.state=t.state;
+
+begin
+open c1;
+    loop 
+    fetch c1 into v_order_no,v_tax_status,v_state,v_rate,v_subtotal;
+    exit when c1%notfound;
+    if v_tax_status='y' then
+    update orders set tax_amt=round(v_subtotal*v_rate) where order_no =v_order_no;
+    elsif v_tax_status='n' then update orders set tax_amt=0 where order_no =v_order_no;
+    end if;
+    end loop;
+close c1;
+end;
+
+execute sp_tax_update;
+-- verify
+select * from orders;
