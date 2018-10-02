@@ -6,7 +6,7 @@ Intial assignments were to write sql query
 
 Assignment 6 --> Write UDF
 
-Assignment 7 --> Write SP
+Assignment 7 --> Create few SP and then call using a driver program..
 
 Assignment 8 --> Write Advanced query
 
